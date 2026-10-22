@@ -1,0 +1,1 @@
+// Lo construiremos juntos: por ahora no se inicia ni se cierra ningún navegador.

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<meta charset="utf-8">
+<title>QA Interview Lab</title>
+<style>body{font:18px system-ui;max-width:650px;margin:70px auto;background:#f4f6fb}label,input,button{display:block;margin:12px 0}input,button{padding:12px}section{background:white;padding:24px;border-radius:16px}</style>
+<h1>Portal de clientes</h1>
+<section id="login">
+<h2>Iniciar sesión</h2>
+<form>
+<label for="email">Correo electrónico</label><input id="email" type="email" required>
+<label for="password">Contraseña</label><input id="password" type="password" required>
+<button type="submit">Ingresar</button>
+</form>
+<p role="alert" hidden></p>
+</section>
+<section id="dashboard" hidden><h2>Mi cuenta</h2><p role="status"></p><button id="logout">Cerrar sesión</button></section>
+<script>
+const login = document.querySelector('#login');
+const dashboard = document.querySelector('#dashboard');
+function showAccount(name) {
+  login.hidden = true;
+  dashboard.hidden = false;
+  document.querySelector('[role=status]').textContent = 'Bienvenido, ' + name;
+}
+if (localStorage.getItem('user')) showAccount(localStorage.getItem('user'));
+document.querySelector('form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const button = document.querySelector('button[type=submit]');
+  const alert = document.querySelector('[role=alert]');
+  button.disabled = true;
+  alert.hidden = true;
+  try {
+    const response = await fetch('/api/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:document.querySelector('#email').value,password:document.querySelector('#password').value})
+    });
+    const data = await response.json();
+    if (response.ok) {
+      localStorage.setItem('user', data.name);
+      showAccount(data.name);
+    } else {
+      alert.textContent = data.error;
+      alert.hidden = false;
+    }
+  } catch {
+    alert.textContent = 'No se pudo conectar';
+    alert.hidden = false;
+  } finally { button.disabled = false; }
+});
+document.querySelector('#logout').onclick = () => { localStorage.clear(); location.reload(); };
+</script>
+</html>
