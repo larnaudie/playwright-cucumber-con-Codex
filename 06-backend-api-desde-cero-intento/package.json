@@ -1,0 +1,16 @@
+{
+  "name": "practico-06-backend-api",
+  "private": true,
+  "scripts": {
+    "app": "node app/server.cjs",
+    "test": "playwright test",
+    "test:health": "playwright test tests/00-health.spec.ts",
+    "report": "playwright show-report reports/html",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}

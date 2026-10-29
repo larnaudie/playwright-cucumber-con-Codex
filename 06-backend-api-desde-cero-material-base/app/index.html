@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Laboratorio de backend</title>
+<style>
+body{font:17px system-ui;max-width:1050px;margin:36px auto;padding:0 20px;background:#f4f6fa;color:#182336}
+section{background:white;padding:24px;border-radius:12px;margin:20px 0}
+label{display:block;margin:12px 0}input,select,button{padding:9px;font:inherit}
+pre{background:#172238;color:#e3edff;padding:18px;white-space:pre-wrap;overflow-wrap:anywhere}
+table{width:100%;border-collapse:collapse}td,th{padding:10px;border-bottom:1px solid #ccc;text-align:left}
+</style></head>
+<body>
+<h1>Backend desde cero — API de tareas</h1>
+<p>La página es un cliente. Cada botón envía una petición HTTP al servidor.
+Abrí DevTools → Network y observá método, estado y respuesta.</p>
+<section><h2>Explorar</h2>
+<button id="health">Consultar salud</button>
+<button id="list">Listar tareas</button>
+<label>Filtrar estado <select id="filter"><option value="">Todas</option><option value="false">Pendientes</option><option value="true">Completadas</option></select></label>
+<table aria-label="Tareas"><thead><tr><th>ID</th><th>Título</th><th>Estado</th><th>Prioridad</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+</section>
+<section><h2>Crear una tarea</h2>
+<form id="create">
+<label>Título <input id="title" value="Mi primera tarea"></label>
+<label>Prioridad <select id="priority"><option>baja</option><option selected>media</option><option>alta</option></select></label>
+<button>Crear tarea</button></form></section>
+<section><h2>Último intercambio HTTP</h2><p>Esta salida representa la última petición; no se actualiza con un listado automático.</p>
+<pre id="exchange">Presioná Consultar salud para empezar.</pre></section>
+<script>
+const exchange = document.querySelector('#exchange');
+async function call(method, url, data) {
+  const options = { method, headers: { Accept: 'application/json' } };
+  if (data !== undefined) {
+    options.headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(data);
+  }
+  try {
+    const response = await fetch(url, options);
+    const text = await response.text();
+    let body = null;
+    if (text) { try { body = JSON.parse(text); } catch { body = text; } }
+    exchange.textContent = JSON.stringify({
+      request: { method, url, headers: options.headers, body: data ?? null },
+      response: { status: response.status, headers: Object.fromEntries(response.headers), body }
+    }, null, 2);
+    if (method === 'GET' && url.startsWith('/api/tasks') && body?.items) render(body.items);
+    return { response, body };
+  } catch (error) { exchange.textContent = String(error); }
+}
+function render(items) {
+  const tbody = document.querySelector('tbody');
+  tbody.replaceChildren();
+  for (const task of items) {
+    const row = document.createElement('tr');
+    for (const value of [task.id, task.title, task.completed ? 'Completada' : 'Pendiente', task.priority]) {
+      const cell = document.createElement('td');
+      cell.textContent = String(value);
+      row.append(cell);
+    }
+    const cell = document.createElement('td');
+    const toggle = document.createElement('button');
+    toggle.textContent = task.completed ? 'Marcar pendiente' : 'Completar';
+    toggle.onclick = () => call('PATCH', '/api/tasks/' + task.id, { completed: !task.completed });
+    const remove = document.createElement('button');
+    remove.textContent = 'Eliminar';
+    remove.onclick = () => call('DELETE', '/api/tasks/' + task.id);
+    cell.append(toggle, remove);
+    row.append(cell);
+    tbody.append(row);
+  }
+}
+document.querySelector('#health').onclick = () => call('GET', '/api/health');
+document.querySelector('#list').onclick = () => {
+  const value = document.querySelector('#filter').value;
+  call('GET', '/api/tasks' + (value ? '?completed=' + value : ''));
+};
+document.querySelector('#create').onsubmit = event => {
+  event.preventDefault();
+  call('POST', '/api/tasks', {
+    title: document.querySelector('#title').value,
+    priority: document.querySelector('#priority').value,
+  });
+};
+</script></body></html>

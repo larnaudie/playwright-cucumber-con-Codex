@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Práctico 05 — Carrito</title>
+<style>
+body{font:17px system-ui;background:#f3f5fa;color:#182336;max-width:1000px;margin:36px auto;padding:0 20px}
+section{background:white;padding:24px;margin:20px 0;border-radius:12px}
+ul{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:18px}
+li{border:1px solid #ccd3df;border-radius:8px;padding:18px;flex:1;min-width:200px}
+input,button{font:inherit;padding:8px;margin:8px 0}
+input{width:80px}button{cursor:pointer}label{display:block}
+table{border-collapse:collapse;width:100%}th,td{padding:12px;text-align:left;border-bottom:1px solid #ddd}
+[role=alert]{color:#a51d26;font-weight:600}
+</style>
+</head>
+<body>
+<header><h1>Tienda de práctica</h1><p>Moneda: USD. Sin impuestos, descuentos ni envío.</p></header>
+<main>
+<section aria-labelledby="catalog-title">
+<h2 id="catalog-title">Catálogo</h2>
+<ul aria-label="Productos">
+<li><h3>Mouse</h3><p>Precio unitario: USD 25</p>
+<label for="quantity-mouse">Cantidad de Mouse</label><input id="quantity-mouse" type="number" value="1">
+<button type="button" data-product="Mouse">Agregar</button></li>
+<li><h3>Teclado</h3><p>Precio unitario: USD 80</p>
+<label for="quantity-keyboard">Cantidad de Teclado</label><input id="quantity-keyboard" type="number" value="1">
+<button type="button" data-product="Teclado">Agregar</button></li>
+<li><h3>Monitor</h3><p>Precio unitario: USD 200</p>
+<label for="quantity-monitor">Cantidad de Monitor</label><input id="quantity-monitor" type="number" value="1">
+<button type="button" data-product="Monitor">Agregar</button></li>
+</ul>
+<p role="alert" hidden></p>
+<p role="status" aria-live="polite"></p>
+</section>
+<section aria-labelledby="cart-title">
+<h2 id="cart-title">Carrito</h2>
+<p data-testid="empty-cart">Carrito vacío</p>
+<table aria-label="Carrito">
+<thead><tr><th scope="col">Producto</th><th scope="col">Cantidad</th><th scope="col">Precio unitario</th><th scope="col">Subtotal</th><th scope="col">Acciones</th></tr></thead>
+<tbody></tbody>
+</table>
+<p>Total: <strong data-testid="cart-total">USD 0</strong></p>
+<button id="clear-cart" type="button">Vaciar carrito</button>
+</section>
+</main>
+<script>
+const catalog = {
+  Mouse: { price: 25, input: 'quantity-mouse' },
+  Teclado: { price: 80, input: 'quantity-keyboard' },
+  Monitor: { price: 200, input: 'quantity-monitor' }
+};
+const cart = new Map();
+const alertBox = document.querySelector('[role=alert]');
+const statusBox = document.querySelector('[role=status]');
+const body = document.querySelector('tbody');
+const money = value => 'USD ' + value;
+
+function renderCart() {
+  body.replaceChildren();
+  let total = 0;
+  for (const [name, quantity] of cart) {
+    const price = catalog[name].price;
+    const row = document.createElement('tr');
+    for (const value of [name, String(quantity), money(price), money(price * quantity)]) {
+      const cell = document.createElement('td');
+      cell.textContent = value;
+      row.append(cell);
+    }
+    const actions = document.createElement('td');
+    const remove = document.createElement('button');
+    remove.textContent = 'Eliminar';
+    remove.type = 'button';
+    remove.onclick = () => {
+      cart.delete(name);
+      renderCart();
+      alertBox.hidden = true;
+      statusBox.textContent = 'Eliminado: ' + name;
+    };
+    actions.append(remove);
+    row.append(actions);
+    body.append(row);
+    total += price * quantity;
+  }
+  document.querySelector('[data-testid=cart-total]').textContent = money(total);
+  document.querySelector('[data-testid=empty-cart]').hidden = cart.size > 0;
+}
+document.querySelectorAll('[data-product]').forEach(button => {
+  button.addEventListener('click', () => {
+    const name = button.dataset.product;
+    const input = document.getElementById(catalog[name].input);
+    const raw = input.value.trim();
+    const quantity = Number(raw);
+    const accumulated = (cart.get(name) ?? 0) + quantity;
+    alertBox.hidden = true;
+    statusBox.textContent = '';
+    if (raw === '' || !Number.isInteger(quantity) || quantity < 1 || quantity > 5) {
+      alertBox.textContent = 'La cantidad debe ser un entero entre 1 y 5';
+      alertBox.hidden = false;
+      return;
+    }
+    if (accumulated > 5) {
+      alertBox.textContent = 'No podés superar 5 unidades por producto';
+      alertBox.hidden = false;
+      return;
+    }
+    // Simula actualización asíncrona de la interfaz.
+    button.disabled = true;
+    setTimeout(() => {
+      cart.set(name, accumulated);
+      renderCart();
+      statusBox.textContent = 'Agregado: ' + name;
+      button.disabled = false;
+    }, 250);
+  });
+});
+document.querySelector('#clear-cart').onclick = () => {
+  cart.clear();
+  renderCart();
+  alertBox.hidden = true;
+  statusBox.textContent = 'Carrito vaciado';
+};
+renderCart();
+</script>
+</body>
+</html>

@@ -34,7 +34,7 @@ export class CustomWorld extends World {
   initializePages(): void {
     this._loginPage = new LoginPage(this.currentPage);
     this._accountPage = new AccountPage(this.currentPage);
-    this._headerPage = new HeaderPage(this.currentPage)
+    this._headerPage = new HeaderPage(this.currentPage);
     //this.homePage = new HomePage(this.currentPage);
     //this.headerPage = new HeaderPage(this.currentPage);
     //this..... 

@@ -1,0 +1,81 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Laboratorio REST 07</title><style>
+body{font:17px system-ui;background:#f1f5fa;color:#172238;max-width:1150px;margin:32px auto;padding:0 20px}
+section{background:white;border-radius:12px;padding:24px;margin:18px 0}label{display:block;margin:12px 0}
+input,select,textarea,button{font:inherit;padding:9px;box-sizing:border-box}input,textarea{width:100%}
+textarea{font-family:monospace;min-height:140px}pre{background:#172238;color:#dff5ef;padding:18px;overflow:auto;white-space:pre-wrap}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}button{cursor:pointer}small{display:block}
+@media(max-width:750px){.grid{grid-template-columns:1fr}}
+</style></head><body>
+<h1>Laboratorio REST</h1><p>El frontend es una consola HTTP: modificá método, ruta, headers y body. El backend aplica el contrato.</p>
+<section><h2>Elegir una operación</h2><label>Plantilla <select id="preset"></select></label>
+<p>Usuarios ficticios: qa@example.test o admin@example.test. Contraseña: Aprender123!</p>
+<p>Las tareas son públicas en este laboratorio. Solo perfil y estadísticas requieren token. No es un sistema de producción.</p></section>
+<div class="grid"><section><h2>Petición</h2>
+<label>Método <select id="method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option><option>HEAD</option><option>OPTIONS</option></select></label>
+<label>Ruta <input id="route" value="/api/health"></label>
+<label>Headers como JSON <textarea id="headers">{"Accept":"application/json"}</textarea></label>
+<label>Body como texto JSON <textarea id="body" placeholder="Sin body para GET/HEAD"></textarea></label>
+<button id="send">Enviar petición</button>
+<label>Token (solo memoria del navegador) <input id="token" type="password" autocomplete="off"></label>
+<button id="use-token">Usar token en Authorization</button>
+<small>Al crear una sesión se copia su token aquí, pero debés aplicar el header con el botón.</small>
+</section><section><h2>Respuesta</h2><p id="status">Todavía no hay respuesta.</p>
+<h3>Headers</h3><pre id="response-headers">—</pre><h3>Body</h3><pre id="response-body">—</pre>
+</section></div>
+<section><h2>Historial</h2><p>Mostramos método/ruta, estado, duración y X-Request-Id. No almacenamos credenciales ni tokens en el historial.</p><pre id="history"></pre></section>
+<script>
+const presets=[
+ ['Salud','GET','/api/health',null],
+ ['Listar tareas','GET','/api/tasks?page=1&limit=10',null],
+ ['Crear tarea','POST','/api/tasks',{title:'Mi tarea REST',priority:'alta'}],
+ ['Leer tarea (editar ID)','GET','/api/tasks/1',null],
+ ['Reemplazar con PUT','PUT','/api/tasks/1',{title:'Tarea reemplazada',completed:false,priority:'media'}],
+ ['Modificar con PATCH','PATCH','/api/tasks/1',{completed:true}],
+ ['Eliminar (editar ID)','DELETE','/api/tasks/1',null],
+ ['Crear sesión','POST','/api/sessions',{email:'qa@example.test',password:'Aprender123!'}],
+ ['Mi perfil (token)','GET','/api/profile',null],
+ ['Estadísticas (admin)','GET','/api/admin/stats',null],
+ ['Cerrar sesión (token)','DELETE','/api/sessions',null],
+ ['HEAD sin body','HEAD','/api/tasks',null],
+ ['OPTIONS y Allow','OPTIONS','/api/tasks',null],
+ ['429 simulado','GET','/api/lab/status/429',null],
+ ['500 simulado','GET','/api/lab/status/500',null],
+ ['503 simulado','GET','/api/lab/status/503',null],
+ ['Respuesta demorada','GET','/api/lab/delay?ms=1000',null],
+ ['404 ruta inexistente','GET','/api/no-existe',null],
+];
+const el=id=>document.getElementById(id);
+presets.forEach((p,i)=>{const o=document.createElement('option');o.value=i;o.textContent=p[0];el('preset').append(o);});
+el('preset').onchange=()=>{
+ const [,method,route,data]=presets[Number(el('preset').value)];
+ el('method').value=method;el('route').value=route;el('body').value=data?JSON.stringify(data,null,2):'';
+ el('headers').value=JSON.stringify(data?{Accept:'application/json','Content-Type':'application/json'}:{Accept:'application/json'},null,2);
+};
+el('use-token').onclick=()=>{
+ try{const h=JSON.parse(el('headers').value);h.Authorization='Bearer '+el('token').value;el('headers').value=JSON.stringify(h,null,2);}
+ catch{el('status').textContent='Los headers no son JSON válido';}
+};
+el('send').onclick=async()=>{
+ const method=el('method').value;const route=el('route').value;
+ // Solo rutas de este laboratorio: no enviar credenciales a otro origen.
+ if(!route.startsWith('/')||route.startsWith('//')||route.includes('\\')){
+  el('status').textContent='Usá una ruta local que empiece con /';return;
+ }
+ let headers;try{headers=JSON.parse(el('headers').value);}catch{el('status').textContent='Headers JSON inválidos';return;}
+ const options={method,headers};
+ if(!['GET','HEAD'].includes(method)&&el('body').value!=='')options.body=el('body').value;
+ const start=performance.now();el('send').disabled=true;
+ try{
+  const response=await fetch(route,options);const text=await response.text();
+  let body=text;try{body=text?JSON.parse(text):null;}catch{}
+  el('status').textContent=response.status+' '+response.statusText;
+  el('response-headers').textContent=JSON.stringify(Object.fromEntries(response.headers),null,2);
+  el('response-body').textContent=text?(typeof body==='object'?JSON.stringify(body,null,2):text):'(sin body)';
+  if(body?.accessToken)el('token').value=body.accessToken;
+  const line=method+' '+route+' -> '+response.status+' | '+Math.round(performance.now()-start)+' ms | '+response.headers.get('x-request-id');
+  el('history').textContent=line+'\n'+el('history').textContent;
+ }catch(e){el('status').textContent='Error de transporte: '+e.message;}
+ finally{el('send').disabled=false;}
+};
+</script></body></html>
